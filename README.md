@@ -59,4 +59,4 @@ Environment variables take precedence over values in the `.env` file.
 
 ## License
 
-MIT
+Apache License
