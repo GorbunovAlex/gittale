@@ -66,7 +66,7 @@ func generateCommitMessageFromGitChanges() (string, error) {
 	}
 
 	apiEndpoint := "http://localhost:11434/api/chat"
-	modelName := "gemma3:4b" // or any local Ollama model you have pulled
+	modelName := "gemma3:4b-it-qat" // or any local Ollama model you have pulled
 
 	client := resty.New()
 
