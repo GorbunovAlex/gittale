@@ -35,6 +35,8 @@ go build -o gittale
 ./gittale status
 ./gittale branch
 ./gittale commit
+# Optionally, move the binary to /usr/local/bin for global usage:
+sudo mv gittale /usr/local/bin/
 ```
 
 - For `commit`, the app will generate a commit message using the LLM based on your staged changes.
@@ -57,4 +59,4 @@ Environment variables take precedence over values in the `.env` file.
 
 ## License
 
-M
+MIT
