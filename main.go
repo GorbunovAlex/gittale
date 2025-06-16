@@ -3,12 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
 	"os/exec"
 	"strings"
 
+	"github.com/go-resty/resty/v2"
 	"github.com/joho/godotenv"
 )
 
@@ -66,56 +65,42 @@ func generateCommitMessageFromGitChanges() (string, error) {
 		return "", fmt.Errorf("failed to get git diff: %w", err)
 	}
 
-	// Prepare request to GPT API
-	apiURL := "https://api.openai.com/v1/chat/completions"
-	apiKey := os.Getenv("OPENAI_API_KEY")
-	if apiKey == "" {
-		return "", fmt.Errorf("OPENAI_API_KEY environment variable not set")
-	}
+	apiEndpoint := "http://localhost:11434/api/chat"
+	modelName := "gemma3:4b" // or any local Ollama model you have pulled
 
-	requestBody := fmt.Sprintf(`{
-		"model": "gpt-4.1",
-		"messages": [
-			{"role": "system", "content": "You are a helpful assistant that writes concise git commit messages."},
-			{"role": "user", "content": "Generate a git commit message for the following diff:\n%s"}
-		],
-		"max_tokens": 60
-	}`, string(diffOutput))
+	client := resty.New()
 
-	req, err := http.NewRequest("POST", apiURL, strings.NewReader(requestBody))
+	response, err := client.R().
+		SetHeader("Content-Type", "application/json").
+		SetBody(map[string]interface{}{
+			"model": modelName,
+			"messages": []interface{}{
+				map[string]interface{}{"role": "system", "content": "You are a helpful assistant that writes concise git commit messages."},
+				map[string]interface{}{"role": "user", "content": fmt.Sprintf("Generate a git commit message for the following diff:\n%s", string(diffOutput))},
+			},
+			"stream": false,
+		}).
+		Post(apiEndpoint)
 	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
+		return "", fmt.Errorf("error while sending the request: %w", err)
 	}
-	req.Header.Set("Authorization", "Bearer "+apiKey)
-	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	body := response.Body()
+	var data map[string]interface{}
+	err = json.Unmarshal(body, &data)
 	if err != nil {
-		return "", fmt.Errorf("failed to send request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("failed to read response: %w", err)
+		return "", fmt.Errorf("error while decoding JSON response: %w", err)
 	}
 
-	// Parse response (simple extraction)
-	type Choice struct {
-		Message struct {
-			Content string `json:"content"`
-		} `json:"message"`
+	// For Ollama, the response content is typically in data["message"]["content"]
+	message, ok := data["message"].(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("unexpected response format from Ollama")
 	}
-	type GPTResponse struct {
-		Choices []Choice `json:"choices"`
+	content, ok := message["content"].(string)
+	if !ok {
+		return "", fmt.Errorf("no content in Ollama response")
 	}
-	var gptResp GPTResponse
-	if err := json.Unmarshal(body, &gptResp); err != nil {
-		return "", fmt.Errorf("failed to parse GPT response: %w", err)
-	}
-	if len(gptResp.Choices) == 0 {
-		return "", fmt.Errorf("no choices in GPT response")
-	}
-	return strings.TrimSpace(gptResp.Choices[0].Message.Content), nil
+
+	return strings.TrimSpace(content), nil
 }
