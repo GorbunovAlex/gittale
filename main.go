@@ -65,9 +65,14 @@ func generateCommitMessageFromGitChanges() (string, error) {
 		return "", fmt.Errorf("failed to get git diff: %w", err)
 	}
 
-	apiEndpoint := "http://localhost:11434/api/chat"
-	modelName := "gemma3:4b-it-qat" // or any local Ollama model you have pulled
-
+	apiEndpoint := fmt.Sprintf("http://%s:11434/api/chat", os.Getenv("OLLAMA_API_HOST"))
+	if apiEndpoint == "" {
+		apiEndpoint = "http://localhost:11434"
+	}
+	modelName := os.Getenv("OLLAMA_MODEL")
+	if modelName == "" {
+		modelName = "gemma3:4b-it-qat"
+	}
 	client := resty.New()
 
 	response, err := client.R().
@@ -87,6 +92,7 @@ func generateCommitMessageFromGitChanges() (string, error) {
 
 	body := response.Body()
 	var data map[string]interface{}
+	fmt.Println("Response status code:", string(body))
 	err = json.Unmarshal(body, &data)
 	if err != nil {
 		return "", fmt.Errorf("error while decoding JSON response: %w", err)
