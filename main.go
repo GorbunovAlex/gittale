@@ -92,7 +92,6 @@ func generateCommitMessageFromGitChanges() (string, error) {
 
 	body := response.Body()
 	var data map[string]interface{}
-	fmt.Println("Response status code:", string(body))
 	err = json.Unmarshal(body, &data)
 	if err != nil {
 		return "", fmt.Errorf("error while decoding JSON response: %w", err)
