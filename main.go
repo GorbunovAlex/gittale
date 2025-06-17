@@ -85,6 +85,20 @@ func generateCommitMessageFromGitChanges() (string, error) {
 		return "", fmt.Errorf("failed to get git diff: %w", err)
 	}
 
+	// Get current branch name
+	branchCmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
+	branchOutput, err := branchCmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("failed to get branch name: %w", err)
+	}
+	branchName := strings.TrimSpace(string(branchOutput))
+
+	// Extract prefix from branch name up to "--" if present, else use full branch name
+	branchPrefix := branchName
+	if idx := strings.Index(branchName, "--"); idx != -1 {
+		branchPrefix = branchName[:idx]
+	}
+
 	gemini_api_key := os.Getenv("API_KEY")
 	ctx := context.Background()
 	client, err := genai.NewClient(ctx, &genai.ClientConfig{
@@ -100,5 +114,10 @@ func generateCommitMessageFromGitChanges() (string, error) {
 		return "", fmt.Errorf("failed to generate content: %w", err)
 	}
 
-	return strings.TrimSpace(result.Text()), nil
+	commitMsg := strings.TrimSpace(result.Text())
+	if branchPrefix != "" {
+		commitMsg = fmt.Sprintf("%s %s", branchPrefix, commitMsg)
+	}
+
+	return commitMsg, nil
 }
