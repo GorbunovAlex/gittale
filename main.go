@@ -12,34 +12,15 @@ import (
 	"google.golang.org/genai"
 )
 
-// go:embed .env
-var envFile embed.FS
-
-func LoadEnv() error {
-	data, err := envFile.ReadFile(".env")
-	if err != nil {
-		return fmt.Errorf("failed to read .env file: %w", err)
-	}
-
-	envMap, err := godotenv.Unmarshal(string(data))
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal .env file: %w", err)
-	}
-
-	for k, v := range envMap {
-		_ = os.Setenv(k, v)
-	}
-
-	return nil
-}
-
 // main is the entry point of the application.
 // It loads environment variables, parses command-line arguments,
 // and executes git commands, with special handling for the 'commit' command
 // to generate a commit message using an AI model.
 func main() {
-	LoadEnv()
-	_ = godotenv.Load()
+	err := LoadEnv()
+	if err != nil {
+		fmt.Println("Error loading environment variables:", err)
+	}
 
 	fmt.Println("Args passed:")
 	for i, arg := range os.Args {
@@ -64,6 +45,27 @@ func main() {
 
 	fmt.Printf("\nRunning 'git %s':\n", strings.Join(os.Args[1:], " "))
 	runGitCommand(os.Args[1:]...)
+}
+
+//go:embed .env
+var envFile embed.FS
+
+func LoadEnv() error {
+	data, err := envFile.ReadFile(".env")
+	if err != nil {
+		return fmt.Errorf("failed to read .env file: %w", err)
+	}
+
+	envMap, err := godotenv.Unmarshal(string(data))
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal .env file: %w", err)
+	}
+
+	for k, v := range envMap {
+		_ = os.Setenv(k, v)
+	}
+
+	return nil
 }
 
 func runGitCommand(args ...string) {
