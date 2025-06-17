@@ -1,14 +1,14 @@
 package main
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
 
-	"github.com/go-resty/resty/v2"
 	"github.com/joho/godotenv"
+	"google.golang.org/genai"
 )
 
 // Usage Instructions:
@@ -65,47 +65,19 @@ func generateCommitMessageFromGitChanges() (string, error) {
 		return "", fmt.Errorf("failed to get git diff: %w", err)
 	}
 
-	apiEndpoint := os.Getenv("OLLAMA_ADDRESS")
-	if apiEndpoint == "" {
-		apiEndpoint = "http://localhost:11434/api/chat"
-	}
-	modelName := os.Getenv("OLLAMA_MODEL")
-	if modelName == "" {
-		modelName = "gemma3:4b-it-qat"
-	}
-	client := resty.New()
-
-	response, err := client.R().
-		SetHeader("Content-Type", "application/json").
-		SetBody(map[string]interface{}{
-			"model": modelName,
-			"messages": []interface{}{
-				map[string]interface{}{"role": "system", "content": "You are a helpful assistant that writes concise git commit messages."},
-				map[string]interface{}{"role": "user", "content": fmt.Sprintf("Generate a git commit message for the following diff:\n%s", string(diffOutput))},
-			},
-			"stream": false,
-		}).
-		Post(apiEndpoint)
+	ctx := context.Background()
+	client, err := genai.NewClient(ctx, &genai.ClientConfig{
+		APIKey:  os.Getenv("API_KEY"),
+		Backend: genai.BackendGeminiAPI,
+	})
 	if err != nil {
-		return "", fmt.Errorf("error while sending the request: %w", err)
+		return "", fmt.Errorf("failed to create GenAI client: %w", err)
 	}
 
-	body := response.Body()
-	var data map[string]interface{}
-	err = json.Unmarshal(body, &data)
+	result, err := client.Models.GenerateContent(ctx, "gemini-2.0-flash", genai.Text(fmt.Sprintf("Generate a git commit message for the following diff:\n%s", string(diffOutput))), nil)
 	if err != nil {
-		return "", fmt.Errorf("error while decoding JSON response: %w", err)
+		return "", fmt.Errorf("failed to generate content: %w", err)
 	}
 
-	// For Ollama, the response content is typically in data["message"]["content"]
-	message, ok := data["message"].(map[string]interface{})
-	if !ok {
-		return "", fmt.Errorf("unexpected response format from Ollama")
-	}
-	content, ok := message["content"].(string)
-	if !ok {
-		return "", fmt.Errorf("no content in Ollama response")
-	}
-
-	return strings.TrimSpace(content), nil
+	return strings.TrimSpace(result.Text()), nil
 }
