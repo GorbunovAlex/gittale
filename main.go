@@ -65,9 +65,9 @@ func generateCommitMessageFromGitChanges() (string, error) {
 		return "", fmt.Errorf("failed to get git diff: %w", err)
 	}
 
-	apiEndpoint := fmt.Sprintf("http://%s:11434/api/chat", os.Getenv("OLLAMA_API_HOST"))
+	apiEndpoint := os.Getenv("OLLAMA_ADDRESS")
 	if apiEndpoint == "" {
-		apiEndpoint = "http://localhost:11434"
+		apiEndpoint = "http://localhost:11434/api/chat"
 	}
 	modelName := os.Getenv("OLLAMA_MODEL")
 	if modelName == "" {

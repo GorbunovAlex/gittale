@@ -20,8 +20,8 @@
 ## Installation
 
 ```sh
-git clone <this-repo>
-cd <this-repo>
+git clone git@github.com:GorbunovAlex/gittale.git
+cd gittale
 go build -o gittale
 ```
 
