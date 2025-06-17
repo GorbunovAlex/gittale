@@ -17,6 +17,8 @@
 
 ## Installation
 
+Ensure you set your Gemini API key in a `.env` file as `API_KEY=YOUR_API_KEY`.
+
 ```sh
 git clone git@github.com:GorbunovAlex/gittale.git
 cd gittale
@@ -25,32 +27,17 @@ go build -o gittale
 
 ## Usage
 
-1. Ensure you have your Gemini API key set in the environment variable `API_KEY` (or in a `.env` file).
-2. Run git commands as follows:
+Run git commands as follows:
 
 ```sh
-./gitgpt status
-./gitgpt branch
-./gitgpt commit
+./gittale status
+./gittale branch
+./gittale commit
 # Optionally, move the binary to /usr/local/bin for global usage:
 sudo mv gittale /usr/local/bin/
 ```
 
 - For `commit`, the app will generate a commit message using the LLM based on your staged changes.
-
-## Configuration
-
-You can configure `gittale` using the following environment variable:
-
-- `API_KEY`: Your Gemini API key.
-
-Alternatively, you can create a `.env` file in the same directory as the `gittale` executable with the following format:
-
-```dotenv
-API_KEY=your-gemini-api-key
-```
-
-Environment variables take precedence over values in the `.env` file.
 
 ## License
 
