@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"embed"
 	"fmt"
 	"os"
 	"os/exec"
@@ -11,13 +12,35 @@ import (
 	"google.golang.org/genai"
 )
 
+// go:embed .env
+var envFile embed.FS
+
+func LoadEnv() error {
+	data, err := envFile.ReadFile(".env")
+	if err != nil {
+		return fmt.Errorf("failed to read .env file: %w", err)
+	}
+
+	envMap, err := godotenv.Unmarshal(string(data))
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal .env file: %w", err)
+	}
+
+	for k, v := range envMap {
+		_ = os.Setenv(k, v)
+	}
+
+	return nil
+}
+
 // main is the entry point of the application.
 // It loads environment variables, parses command-line arguments,
 // and executes git commands, with special handling for the 'commit' command
 // to generate a commit message using an AI model.
-
 func main() {
+	LoadEnv()
 	_ = godotenv.Load()
+
 	fmt.Println("Args passed:")
 	for i, arg := range os.Args {
 		fmt.Printf("Arg %d: %s\n", i, arg)
@@ -60,9 +83,10 @@ func generateCommitMessageFromGitChanges() (string, error) {
 		return "", fmt.Errorf("failed to get git diff: %w", err)
 	}
 
+	gemini_api_key := os.Getenv("API_KEY")
 	ctx := context.Background()
 	client, err := genai.NewClient(ctx, &genai.ClientConfig{
-		APIKey:  os.Getenv("API_KEY"),
+		APIKey:  gemini_api_key,
 		Backend: genai.BackendGeminiAPI,
 	})
 	if err != nil {
