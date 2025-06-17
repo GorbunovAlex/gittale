@@ -11,16 +11,11 @@ import (
 	"google.golang.org/genai"
 )
 
-// Usage Instructions:
-//  1. Ensure you have Go installed and git available in your PATH.
-//  2. Set your OpenAI API key in the environment variable OPENAI_API_KEY.
-//     Example: export OPENAI_API_KEY=your-api-key
-//  3. Build the application: go build -o gitgpt
-//  4. Run the application with a git command as arguments, e.g.:
-//     ./gitgpt status
-//     ./gitgpt branch
-//     ./gitgpt commit
-//     - For 'commit', the app will generate a commit message using GPT based on staged changes.
+// main is the entry point of the application.
+// It loads environment variables, parses command-line arguments,
+// and executes git commands, with special handling for the 'commit' command
+// to generate a commit message using an AI model.
+
 func main() {
 	_ = godotenv.Load()
 	fmt.Println("Args passed:")
