@@ -109,7 +109,7 @@ func generateCommitMessageFromGitChanges() (string, error) {
 		return "", fmt.Errorf("failed to create GenAI client: %w", err)
 	}
 
-	result, err := client.Models.GenerateContent(ctx, "gemini-2.0-flash", genai.Text(fmt.Sprintf("Generate a git commit message for the following diff, be precise, without overthinking on the purpose:\n%s", string(diffOutput))), nil)
+	result, err := client.Models.GenerateContent(ctx, "gemini-2.0-flash", genai.Text(fmt.Sprintf("```\n%s\n``` \nGenerate a git commit message for the provided diff, be precise, without overthinking on the purpose. The first line is always a short description without any special symbols, then a description separated by a plank line", string(diffOutput))), nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate content: %w", err)
 	}
