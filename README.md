@@ -6,18 +6,18 @@
 
 - Run any `git` command via `gittale`.
 - For `git commit`, automatically generates a commit message using an LLM based on your staged diff.
-- Simple integration with Gemini API.
+- Simple integration with local Ollama model.
 
 ## Prerequisites
 
 - Go (for building the app)
 - `git` installed and available in your `PATH`
-- Access to Gemini API and an API key
-- (Optional) `.env` file to configure your API key
+- Access to a local Ollama instance running your preferred model
+- (Optional) `.env` file to configure your Ollama model (e.g., `OLLAMA_MODEL=your-model`)
 
 ## Installation
 
-Ensure you set your Gemini API key in a `.env` file as `API_KEY=YOUR_API_KEY`.
+Ensure you set your Ollama model in a `.env` file as `OLLAMA_MODEL=your-model`.
 
 ```sh
 git clone git@github.com:GorbunovAlex/gittale.git
@@ -37,7 +37,7 @@ Run git commands as follows:
 sudo mv gittale /usr/local/bin/
 ```
 
-- For `commit`, the app will generate a commit message using the LLM based on your staged changes.
+- For `commit`, the app will generate a commit message using the LLM via your local Ollama instance, based on your staged changes.
 
 ## License
 

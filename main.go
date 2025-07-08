@@ -1,15 +1,16 @@
 package main
 
 import (
-	"context"
+	"bytes"
 	"embed"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"strings"
 
 	"github.com/joho/godotenv"
-	"google.golang.org/genai"
 )
 
 // main is the entry point of the application.
@@ -99,22 +100,37 @@ func generateCommitMessageFromGitChanges() (string, error) {
 		branchPrefix = branchName[:idx]
 	}
 
-	gemini_api_key := os.Getenv("API_KEY")
-	ctx := context.Background()
-	client, err := genai.NewClient(ctx, &genai.ClientConfig{
-		APIKey:  gemini_api_key,
-		Backend: genai.BackendGeminiAPI,
-	})
+	// Prepare prompt for ollama
+	prompt := fmt.Sprintf("```\n%s\n```\nGenerate a git commit message for the provided diff, be precise, without overthinking on the purpose. The first line is always a short description without any special symbols, then a description separated by a blank line.", string(diffOutput))
+
+	// Call local ollama API
+	modelName := os.Getenv("OLLAMA_MODEL")
+	if modelName == "" {
+		modelName = "llama3"
+	}
+	reqBody := map[string]interface{}{
+		"model":  modelName,
+		"prompt": prompt,
+	}
+	reqBytes, err := json.Marshal(reqBody)
 	if err != nil {
-		return "", fmt.Errorf("failed to create GenAI client: %w", err)
+		return "", fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	result, err := client.Models.GenerateContent(ctx, "gemini-2.0-flash", genai.Text(fmt.Sprintf("```\n%s\n``` \nGenerate a git commit message for the provided diff, be precise, without overthinking on the purpose. The first line is always a short description without any special symbols, then a description separated by a plank line", string(diffOutput))), nil)
+	resp, err := http.Post("http://localhost:11434/api/generate", "application/json", bytes.NewReader(reqBytes))
 	if err != nil {
-		return "", fmt.Errorf("failed to generate content: %w", err)
+		return "", fmt.Errorf("failed to call ollama: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var respData struct {
+		Response string `json:"response"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+		return "", fmt.Errorf("failed to decode ollama response: %w", err)
 	}
 
-	commitMsg := strings.TrimSpace(result.Text())
+	commitMsg := strings.TrimSpace(respData.Response)
 	if branchPrefix != "" {
 		commitMsg = fmt.Sprintf("%s %s", branchPrefix, commitMsg)
 	}
