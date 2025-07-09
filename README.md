@@ -34,6 +34,7 @@ Run git commands as follows:
 ./gittale branch
 ./gittale commit
 # Optionally, move the binary to /usr/local/bin for global usage:
+sudo chmod +x gittale
 sudo mv gittale /usr/local/bin/
 ```
 
