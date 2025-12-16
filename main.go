@@ -100,17 +100,32 @@ func generateCommitMessageFromGitChanges() (string, error) {
 		branchPrefix = branchName[:idx]
 	}
 
-	// Prepare prompt for ollama
-	prompt := fmt.Sprintf("```\n%s\n```\nGenerate a git commit message for the provided diff, be precise, without overthinking on the purpose. The first line is always a short description without any special symbols, then a description separated by a blank line.", string(diffOutput))
+	systemPrompt := `You are an expert developer writing git commit messages.
+		Your task is to analyze the provided code diff and write a semantic commit message.
+		
+		Rules:
+		1. Format: <type>: <subject> (e.g., feat: add user login, fix: handle null pointer)
+		2. The subject must be imperative mood ("add" not "added").
+		3. Do NOT include ticket numbers (like SCH-0000), just the message content.
+		4. Do NOT output markdown or conversational text.
+		5. If the diff is trivial, output only the first line.
+		6. If the diff is complex, provide a summary, a blank line, and a bulleted list of details.`
+	userPrompt := fmt.Sprintf("Generate the commit message for this diff:\n\n%s", string(diffOutput))
 
-	// Call local ollama API
 	modelName := os.Getenv("OLLAMA_MODEL")
 	if modelName == "" {
-		modelName = "llama3"
+		modelName = "qwen2.5-coder:1.5b"
 	}
+
 	reqBody := map[string]interface{}{
 		"model":  modelName,
-		"prompt": prompt,
+		"system": systemPrompt, // <-- Instructions go here
+		"prompt": userPrompt,   // <-- Data goes here
+		"stream": false,        // <-- Important for non-streaming response
+		"options": map[string]interface{}{
+			"temperature": 0.2,  // Low creativity, high precision
+			"num_ctx":     4096, // Increase context window to fit larger diffs
+		},
 	}
 	reqBytes, err := json.Marshal(reqBody)
 	if err != nil {
