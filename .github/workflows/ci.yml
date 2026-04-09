@@ -47,7 +47,7 @@ jobs:
 
       - name: Open PR with updated context
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
           BRANCH="chore/update-tribal-knowledge-$(date +%Y%m%d)"
           git config user.name "tribal-mapper[bot]"
