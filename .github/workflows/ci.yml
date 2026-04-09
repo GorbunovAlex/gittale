@@ -1,0 +1,52 @@
+name: Update Tribal Knowledge
+
+on:
+  schedule:
+    - cron: "0 3 1 * *" # Runs at 03:00 UTC on the 1st of every month
+  workflow_dispatch: # allow manual trigger
+
+jobs:
+  index:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout target repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Clone & install tribal_mapper
+        run: |
+          git clone https://github.com/GorbunovAlex/tribal_mapper.git /tmp/tribal_mapper
+          cd /tmp/tribal_mapper
+          uv sync
+
+      - name: Create mapper config
+        run: |
+          cat > /tmp/tribal_mapper/config/mapper.yaml << 'EOF'
+          openai_api_key: "${{ secrets.OPENAI_API_KEY }}"
+          rpm_limit: 30
+          max_concurrency: 2
+          token_ceiling: 1000
+          extensions: [.go, .py, .ts, .js]
+          EOF
+
+      - name: Run indexing
+        working-directory: /tmp/tribal_mapper
+        run: uv run python main.py index ${{ github.workspace }}
+
+      - name: Commit updated context
+        run: |
+          git config user.name "tribal-mapper[bot]"
+          git config user.email "tribal-mapper[bot]@users.noreply.github.com"
+          git add .ai_context/
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: update tribal knowledge context"
+            git push
+          fi
