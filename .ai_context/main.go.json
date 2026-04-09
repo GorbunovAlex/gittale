@@ -1,0 +1,18 @@
+{
+  "quick_commands": "This Go program is designed to streamline Git commit processes by automatically generating commit messages using an AI model. Here's a detailed breakdown of how it operates:\n\n### Key Components\n\n1. **Environment Setup**:\n   - The program uses the `embed` package to include a `.env` file within the binary, which contains essential environment variables.\n   - The `LoadEnv` function leverages the `godotenv` package to read and set these variables, such as API keys needed for accessing the AI model.\n\n2. **Command-Line Arguments**:\n   - The program is executed with command-line arguments specifying the Git command to run.\n   - If no arguments are provided, the user is prompted to specify a Git command, ensuring the program knows what action to perform.\n\n3. **Git Command Execution**:\n   - For the `commit` command, the program generates a commit message using an AI model before proceeding with the commit.\n   - For other Git commands, it executes them directly using the `runGitCommand` function, which handles interactions with the Git CLI.\n\n4. **Commit Message Generation**:\n   - The `generateCommitMessageFromGitChanges` function is crucial for creating commit messages.\n   - It collects the current Git diff and branch name to provide context for the AI model.\n   - The `genai` package is used to interact with the Gemini AI model, which generates a commit message based on the provided Git diff.\n   - The generated message can be prefixed with the branch name to ensure consistency with branch-related changes.\n\n5. **AI Model Interaction**:\n   - A client for the Gemini AI model is created using the `genai` package.\n   - The program sends a request to the AI model with the Git diff as input, and the model returns an appropriate commit message.\n\n6. **Error Handling**:\n   - The program includes robust error handling to manage potential issues, such as failures in loading environment variables, executing Git commands, or interacting with the AI model.\n\n### Usage\n\nTo use this program, follow these steps:\n\n- Ensure the `.env` file is correctly set up with necessary environment variables, including the `API_KEY` for the Gemini AI model.\n- Run the program with a Git command as an argument. For example, to make a commit, you would run the program with `commit` as the argument.\n- The program will automatically generate a commit message if the `commit` command is used, leveraging the AI model to create a meaningful and context-aware message.\n\nThis tool is particularly useful for developers who want to automate the process of writing commit messages, ensuring they are consistent and informative without manual input.",
+  "key_files": [
+    "main.go"
+  ],
+  "non_obvious_patterns": "",
+  "gotchas": "",
+  "see_also": [],
+  "token_count": {
+    "value": 660,
+    "ceiling": 1000
+  },
+  "last_updated": "2026-04-09T06:19:12.535442",
+  "policy": {
+    "max_days_old": 7,
+    "max_commits_old": 10
+  }
+}
