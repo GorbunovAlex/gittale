@@ -81,7 +81,7 @@ func buildCommitMessagePrompt(summaries []string) string {
 	return fmt.Sprintf(
 		"Based on the summarized diff chunks, generate a concise git commit message. "+
 			"Output format must be exactly:\n"+
-			"1) First line: short title in imperative mood, no special prefixes.\n"+
+			"1) First line: short title in imperative mood, no special prefixes. It should be in the form: <branch prefix>:<title>\n"+
 			"2) Empty line.\n"+
 			"3) Optional body with specific details.\n\n"+
 			"Summaries:\n%s",
