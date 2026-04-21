@@ -47,9 +47,9 @@ jobs:
 
       - name: Open PR with updated context
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
-          BRANCH="chore/update-tribal-knowledge-$(date +%Y%m%d)"
+          BRANCH="chore/update-tribal-knowledge-$(date +%Y%m%d-%H%M%S)"
           git config user.name "tribal-mapper[bot]"
           git config user.email "tribal-mapper[bot]@users.noreply.github.com"
           git add .ai_context/
