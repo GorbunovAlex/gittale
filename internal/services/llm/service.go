@@ -68,23 +68,32 @@ func splitDiffIntoBatches(diff string, maxChars int) []string {
 
 func buildBatchSummaryPrompt(batch string, idx int, total int) string {
 	return fmt.Sprintf(
-		"You are summarizing a git diff chunk (%d/%d). "+
-			"List the concrete file-level and behavior-level changes in short bullets. "+
-			"Do not invent details and do not write a commit message yet.\n\nDiff chunk:\n```diff\n%s\n```",
+		"You are summarizing a git diff chunk (%d/%d).\n"+
+			"List the concrete file-level and behavior-level changes in short bullets.\n"+
+			"Do not invent details. Do not write a commit message yet.\n"+
+			"Do not use markdown code fences or backticks in your response.\n\n"+
+			"Diff chunk:\n%s",
 		idx,
 		total,
 		batch,
 	)
 }
 
-func buildCommitMessagePrompt(summaries []string) string {
+func buildCommitMessagePrompt(summaries []string, branchPrefix string) string {
+	titleRule := "short imperative title (max 72 chars)"
+	if branchPrefix != "" {
+		titleRule = fmt.Sprintf("short imperative title (max 72 chars), must start with \"%s \"", branchPrefix)
+	}
+
 	return fmt.Sprintf(
-		"Based on the summarized diff chunks, generate a concise git commit message. "+
-			"Output format must be exactly:\n"+
-			"1) First line: short title in imperative mood, no special prefixes. It should be in the form: <branch prefix>:<title>\n"+
-			"2) Empty line.\n"+
-			"3) Optional body with specific details.\n\n"+
+		"Generate a git commit message based on the diff summaries below.\n\n"+
+			"Rules:\n"+
+			"- Output ONLY the commit message. No explanations, no markdown, no backticks, no code fences.\n"+
+			"- First line: %s.\n"+
+			"- Second line: blank.\n"+
+			"- Third line onwards: optional body with specific details, plain text only.\n\n"+
 			"Summaries:\n%s",
+		titleRule,
 		strings.Join(summaries, "\n\n"),
 	)
 }
@@ -122,7 +131,8 @@ func (s *Service) GenerateCommitMessage(ctx context.Context, diff string, branch
 		return "", fmt.Errorf("unable to produce commit summary from diff")
 	}
 
-	message, err := s.client.Generate(ctx, buildCommitMessagePrompt(summaries))
+	branchPrefix := extractBranchPrefix(branchName)
+	message, err := s.client.Generate(ctx, buildCommitMessagePrompt(summaries, branchPrefix))
 	if err != nil {
 		return "", fmt.Errorf("failed to generate commit message: %w", err)
 	}
@@ -130,11 +140,6 @@ func (s *Service) GenerateCommitMessage(ctx context.Context, diff string, branch
 	message = strings.TrimSpace(message)
 	if message == "" {
 		return "", fmt.Errorf("llm returned empty commit message")
-	}
-
-	branchPrefix := extractBranchPrefix(branchName)
-	if branchPrefix != "" {
-		message = branchPrefix + " " + message
 	}
 
 	return message, nil
