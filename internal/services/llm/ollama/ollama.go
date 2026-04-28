@@ -22,7 +22,7 @@ func NewOllamaClient(url string, model string) *OllamaClient {
 		url:   strings.TrimRight(url, "/"),
 		model: model,
 		httpClient: &http.Client{
-			Timeout: 120 * time.Second,
+			Timeout: 5 * time.Minute,
 		},
 	}
 }

@@ -20,6 +20,8 @@ type rawConfig struct {
 	GeminiModel   string `yaml:"gemini_model"`
 	OllamaModel   string `yaml:"ollama_model"`
 	OllamaURL     string `yaml:"ollama_url"`
+	ClaudeAPIKey  string `yaml:"claude_api_key"`
+	ClaudeModel   string `yaml:"claude_model"`
 }
 
 func main() {
@@ -46,14 +48,19 @@ func main() {
 	if cfg.OllamaURL == "" {
 		cfg.OllamaURL = "http://localhost:11434"
 	}
+	if cfg.ClaudeModel == "" {
+		cfg.ClaudeModel = "claude-sonnet-4-6"
+	}
 
 	fmt.Printf(
-		"-X '%s.buildEnv=%s' -X '%s.buildModelProvider=%s' -X '%s.buildGeminiAPIKey=%s' -X '%s.buildGeminiModel=%s' -X '%s.buildOllamaModel=%s' -X '%s.buildOllamaURL=%s'",
+		"-X '%s.buildEnv=%s' -X '%s.buildModelProvider=%s' -X '%s.buildGeminiAPIKey=%s' -X '%s.buildGeminiModel=%s' -X '%s.buildOllamaModel=%s' -X '%s.buildOllamaURL=%s' -X '%s.buildClaudeAPIKey=%s' -X '%s.buildClaudeModel=%s'",
 		pkg, cfg.Env,
 		pkg, cfg.ModelProvider,
 		pkg, cfg.GeminiAPIKey,
 		pkg, cfg.GeminiModel,
 		pkg, cfg.OllamaModel,
 		pkg, cfg.OllamaURL,
+		pkg, cfg.ClaudeAPIKey,
+		pkg, cfg.ClaudeModel,
 	)
 }

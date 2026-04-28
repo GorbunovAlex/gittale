@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"gittale/internal/config"
+	"gittale/internal/services/llm/claude"
 	"gittale/internal/services/llm/gemini"
 	"gittale/internal/services/llm/ollama"
 )
@@ -14,6 +15,7 @@ const (
 	defaultMaxBatchChars = 12000
 	defaultGeminiModel   = "gemini-2.0-flash"
 	defaultOllamaURL     = "http://localhost:11434"
+	defaultClaudeModel   = "claude-sonnet-4-6"
 )
 
 type TextGenerator interface {
@@ -173,6 +175,15 @@ func NewFromConfig(cfg *config.Config) (*Service, error) {
 			url = defaultOllamaURL
 		}
 		client = ollama.NewOllamaClient(url, model)
+	case config.ClaudeProvider:
+		model := strings.TrimSpace(cfg.ClaudeModel)
+		if model == "" {
+			model = defaultClaudeModel
+		}
+		client, err = claude.NewClaudeClient(strings.TrimSpace(cfg.ClaudeAPIKey), model)
+		if err != nil {
+			return nil, err
+		}
 	default:
 		return nil, fmt.Errorf("unsupported llm provider: %s", cfg.ModelProvider)
 	}

@@ -18,6 +18,7 @@ type ModelProvider string
 const (
 	LLMProviderOllama ModelProvider = "ollama"
 	GeminiProvider    ModelProvider = "gemini"
+	ClaudeProvider    ModelProvider = "claude"
 )
 
 type Config struct {
@@ -27,6 +28,8 @@ type Config struct {
 	GeminiModel   string
 	OllamaModel   string
 	OllamaURL     string
+	ClaudeAPIKey  string
+	ClaudeModel   string
 }
 
 // Stamped at build time by the Makefile via -ldflags -X.
@@ -37,6 +40,8 @@ var (
 	buildGeminiModel   = "gemini-2.0-flash"
 	buildOllamaModel   string
 	buildOllamaURL     = "http://localhost:11434"
+	buildClaudeAPIKey  string
+	buildClaudeModel   = "claude-sonnet-4-6"
 )
 
 func MustLoad() *Config {
@@ -50,5 +55,7 @@ func MustLoad() *Config {
 		GeminiModel:   buildGeminiModel,
 		OllamaModel:   buildOllamaModel,
 		OllamaURL:     buildOllamaURL,
+		ClaudeAPIKey:  buildClaudeAPIKey,
+		ClaudeModel:   buildClaudeModel,
 	}
 }
