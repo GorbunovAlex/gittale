@@ -47,7 +47,13 @@ func main() {
 			return
 		}
 
-		msg, err := llmService.GenerateCommitMessage(ctx, diff, branchName)
+		recentCommits, err := gitService.RecentCommits(ctx, 5)
+		if err != nil {
+			log.Warn("failed to get recent commits, proceeding without style hints", sl.Error(err))
+			recentCommits = ""
+		}
+
+		msg, err := llmService.GenerateCommitMessage(ctx, diff, branchName, recentCommits)
 		if err != nil {
 			log.Error("failed to generate commit message", sl.Error(err))
 			return

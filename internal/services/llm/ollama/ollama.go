@@ -28,10 +28,16 @@ func NewOllamaClient(url string, model string) *OllamaClient {
 }
 
 func (c *OllamaClient) Generate(ctx context.Context, prompt string) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	defer cancel()
+
 	payload := map[string]any{
 		"model":  c.model,
 		"prompt": prompt,
 		"stream": false,
+		"options": map[string]any{
+			"num_predict": 256,
+		},
 	}
 
 	body, err := json.Marshal(payload)

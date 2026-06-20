@@ -9,10 +9,12 @@ import (
 	"gittale/internal/services/llm/claude"
 	"gittale/internal/services/llm/gemini"
 	"gittale/internal/services/llm/ollama"
+
+	"golang.org/x/sync/errgroup"
 )
 
 const (
-	defaultMaxBatchChars = 12000
+	defaultMaxBatchChars = 4000
 	defaultGeminiModel   = "gemini-2.0-flash"
 	defaultOllamaURL     = "http://localhost:11434"
 	defaultClaudeModel   = "claude-sonnet-4-6"
@@ -71,7 +73,7 @@ func splitDiffIntoBatches(diff string, maxChars int) []string {
 func buildBatchSummaryPrompt(batch string, idx int, total int) string {
 	return fmt.Sprintf(
 		"You are summarizing a git diff chunk (%d/%d).\n"+
-			"List the concrete file-level and behavior-level changes in short bullets.\n"+
+			"List the concrete file-level and behavior-level changes in short bullets(changed file/behaviour only, no code).\n"+
 			"Do not invent details. Do not write a commit message yet.\n"+
 			"Do not use markdown code fences or backticks in your response.\n\n"+
 			"Diff chunk:\n%s",
@@ -81,22 +83,55 @@ func buildBatchSummaryPrompt(batch string, idx int, total int) string {
 	)
 }
 
-func buildCommitMessagePrompt(summaries []string, branchPrefix string) string {
+func commitMessageRules(titleRule, styleHint string) string {
+	return fmt.Sprintf(
+		"Rules:\n"+
+			"- Output ONLY the commit message. No explanations, no markdown, no backticks, no code fences.\n"+
+			"- First line: %s.\n"+
+			"- Second line: blank.\n"+
+			"- Third line onwards: optional body with specific details, plain text only.\n"+
+			"- Describe the intent and impact, not the file changes.\n"+
+			"- Bad: \"Update service.go to add errgroup import\"\n"+
+			"- Good: \"Parallelize LLM batch calls to reduce commit generation time\"%s",
+		titleRule,
+		styleHint,
+	)
+}
+
+func commitTitleRuleAndStyleHint(branchPrefix, recentCommits string) (string, string) {
 	titleRule := "short imperative title (max 72 chars)"
 	if branchPrefix != "" {
 		titleRule = fmt.Sprintf("short imperative title (max 72 chars), must start with \"%s \"", branchPrefix)
 	}
+	styleHint := ""
+	if recentCommits != "" {
+		styleHint = fmt.Sprintf(
+			"\nMatch the tone and style of these recent commits from this repo:\n%s",
+			recentCommits,
+		)
+	}
+	return titleRule, styleHint
+}
 
+func buildCommitMessagePrompt(summaries []string, branchPrefix string, recentCommits string) string {
+	titleRule, styleHint := commitTitleRuleAndStyleHint(branchPrefix, recentCommits)
 	return fmt.Sprintf(
 		"Generate a git commit message based on the diff summaries below.\n\n"+
-			"Rules:\n"+
-			"- Output ONLY the commit message. No explanations, no markdown, no backticks, no code fences.\n"+
-			"- First line: %s.\n"+
-			"- Second line: blank.\n"+
-			"- Third line onwards: optional body with specific details, plain text only.\n\n"+
+			"%s\n\n"+
 			"Summaries:\n%s",
-		titleRule,
+		commitMessageRules(titleRule, styleHint),
 		strings.Join(summaries, "\n\n"),
+	)
+}
+
+func buildCommitMessageFromDiffPrompt(diff string, branchPrefix string, recentCommits string) string {
+	titleRule, styleHint := commitTitleRuleAndStyleHint(branchPrefix, recentCommits)
+	return fmt.Sprintf(
+		"Generate a git commit message for the following diff.\n\n"+
+			"%s\n\n"+
+			"Diff:\n%s",
+		commitMessageRules(titleRule, styleHint),
+		diff,
 	)
 }
 
@@ -105,36 +140,44 @@ func extractBranchPrefix(branchName string) string {
 	if name == "" {
 		return ""
 	}
-	if idx := strings.Index(name, "--"); idx != -1 {
-		return strings.TrimSpace(name[:idx])
+	if before, _, ok := strings.Cut(name, "--"); ok {
+		return strings.TrimSpace(before)
 	}
 	return name
 }
 
-func (s *Service) GenerateCommitMessage(ctx context.Context, diff string, branchName string) (string, error) {
+func (s *Service) GenerateCommitMessage(ctx context.Context, diff string, branchName string, recentCommits string) (string, error) {
 	if strings.TrimSpace(diff) == "" {
 		return "", fmt.Errorf("diff is empty")
 	}
 
 	batches := splitDiffIntoBatches(diff, s.maxBatchChars)
-	summaries := make([]string, 0, len(batches))
-
-	for i, batch := range batches {
-		summary, err := s.client.Generate(ctx, buildBatchSummaryPrompt(batch, i+1, len(batches)))
-		if err != nil {
-			return "", fmt.Errorf("failed to summarize diff batch %d: %w", i+1, err)
-		}
-		if strings.TrimSpace(summary) != "" {
-			summaries = append(summaries, summary)
-		}
-	}
-
-	if len(summaries) == 0 {
-		return "", fmt.Errorf("unable to produce commit summary from diff")
-	}
-
 	branchPrefix := extractBranchPrefix(branchName)
-	message, err := s.client.Generate(ctx, buildCommitMessagePrompt(summaries, branchPrefix))
+
+	var finalPrompt string
+	if len(batches) == 1 {
+		finalPrompt = buildCommitMessageFromDiffPrompt(batches[0], branchPrefix, recentCommits)
+	} else {
+		summaries := make([]string, len(batches))
+		g, gctx := errgroup.WithContext(ctx)
+		for i, batch := range batches {
+			i, batch := i, batch
+			g.Go(func() error {
+				summary, err := s.client.Generate(gctx, buildBatchSummaryPrompt(batch, i+1, len(batches)))
+				if err != nil {
+					return fmt.Errorf("failed to summarize diff batch %d: %w", i+1, err)
+				}
+				summaries[i] = strings.TrimSpace(summary)
+				return nil
+			})
+		}
+		if err := g.Wait(); err != nil {
+			return "", err
+		}
+		finalPrompt = buildCommitMessagePrompt(summaries, branchPrefix, recentCommits)
+	}
+
+	message, err := s.client.Generate(ctx, finalPrompt)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate commit message: %w", err)
 	}
