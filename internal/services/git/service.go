@@ -45,3 +45,12 @@ func (s *Service) CurrentBranch(ctx context.Context) (string, error) {
 
 	return strings.TrimSpace(string(output)), nil
 }
+
+func (s *Service) RecentCommits(ctx context.Context, n int) (string, error) {
+	cmd := exec.CommandContext(ctx, "git", "log", "--oneline", fmt.Sprintf("-%d", n))
+	output, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("failed to get recent commits: %w", err)
+	}
+	return strings.TrimSpace(string(output)), nil
+}
